@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>凛的妙妙工具</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 20px;
+    background: #f5f5f7;
+    color: #1d1d1f;
+  }
+  h1 { font-size: 22px; text-align: center; margin-bottom: 20px; }
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .card h2 { font-size: 16px; margin: 0 0 12px 0; color: #555; }
+  label { display: block; font-size: 14px; margin-bottom: 4px; color: #333; }
+  input[type="number"] {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 15px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 14px;
+    background: #fafafa;
+  }
+  .chip input { margin: 0; }
+  .chip.active { background: #e8f0fe; border-color: #1a73e8; }
+  .row { display: flex; gap: 12px; }
+  .row > div { flex: 1; }
+  button.calc-btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+    background: #1a73e8;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  button.calc-btn:active { background: #1557b0; }
+  #result { margin-top: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 8px 6px; text-align: center; border-bottom: 1px solid #eee; }
+  th { background: #f0f0f0; font-weight: 600; }
+  .total { font-size: 18px; font-weight: 700; text-align: center; margin-top: 12px; color: #1a73e8; }
+  .note { font-size: 12px; color: #888; margin-top: 8px; }
+  .hidden { display: none !important; }
+  .special { border: 1px dashed #f0a500; background: #fffbf0; }
+  .special h2 { color: #b87a00; }
+
+  .mode-row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .mode-btn {
+    flex: 1;
+    padding: 10px 8px;
+    font-size: 14px;
+    text-align: center;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background: #fafafa;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s;
+  }
+  .mode-btn.active {
+    background: #e8f0fe;
+    border-color: #1a73e8;
+    color: #1a73e8;
+    font-weight: 600;
+  }
+
+  .num-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .num-btn {
+    min-width: 42px;
+    height: 42px;
+    padding: 0 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background: #fafafa;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s;
+  }
+  .num-btn.active {
+    background: #e8f0fe;
+    border-color: #1a73e8;
+    color: #1a73e8;
+    font-weight: 600;
+  }
+
+  .disabled-block {
+    opacity: 0.35;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  /* ===== 输入框 + 右侧刻度条 ===== */
+  .wheel-wrap {
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .wheel-wrap input[type="number"] {
+    margin-bottom: 0;
+    flex: 1;
+  }
+  .wheel-wrap input[type="number"]::-webkit-outer-spin-button,
+  .wheel-wrap input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .wheel-wrap input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
+  /* 刻度条 */
+  .tick-bar {
+    width: 18px;
+    height: 42px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background: #fafafa;
+    position: relative;
+    overflow: hidden;
+    cursor: ns-resize;
+    user-select: none;
+    flex-shrink: 0;
+  }
+  .tick-bar .ticks {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    transition: transform 0.08s linear;
+  }
+  .tick-bar .tick {
+    height: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .tick-bar .tick::before {
+    content: '';
+    display: block;
+    width: 8px;
+    height: 1px;
+    background: #bbb;
+  }
+  .tick-bar .tick.major::before {
+    width: 12px;
+    background: #888;
+  }
+  .tick-bar .indicator {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 2px;
+    background: #1a73e8;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+  /* ===== 到顶提示 ===== */
+  @keyframes shake {
+    0% { transform: translateX(0); }
+    20% { transform: translateX(-3px); }
+    40% { transform: translateX(3px); }
+    60% { transform: translateX(-2px); }
+    80% { transform: translateX(2px); }
+    100% { transform: translateX(0); }
+  }
+  .wheel-wrap input.at-max {
+    border-color: #e53935;
+    background: #fff5f5;
+    color: #e53935;
+  }
+  .wheel-wrap input.shake {
+    animation: shake 0.25s ease;
+  }
+  .max-hint {
+    position: absolute;
+    right: 32px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    color: #e53935;
+    white-space: nowrap;
+    display: none;
+    pointer-events: none;
+  }
+  .max-hint.show {
+    display: inline;
+  }
+
+  /* ===== 预览表 ===== */
+  .preview-title {
+    font-size: 12px;
+    color: #aaa;
+    margin-top: 16px;
+    margin-bottom: 6px;
+  }
+  table.preview-table {
+    opacity: 0.45;
+  }
+  table.preview-table th {
+    background: #f7f7f7;
+    color: #999;
+  }
+  table.preview-table td {
+    color: #999;
+  }
+  .preview-table b {
+    color: #999;
+  }
+</style>
+</head>
+<body>
+
+<h1>书页伤害计算</h1>
+
+<!-- ===== 筹码区 ===== -->
+<div class="card">
+  <h2>普通筹码</h2>
+  <div class="chips" id="chipBox">
+    <label class="chip"><input type="checkbox" id="chipDart"> 飞镖</label>
+    <label class="chip"><input type="checkbox" id="chipBag"> 背包</label>
+    <label class="chip"><input type="checkbox" id="chipSprinkler"> 喷灌</label>
+    <label class="chip"><input type="checkbox" id="chipQuiver"> 箭袋</label>
+    <label class="chip"><input type="checkbox" id="chipTome" onchange="toggleTome()"> 秘典</label>
+    <label class="chip"><input type="checkbox" id="chipBookmark"> 书签</label>
+  </div>
+</div>
+
+<div class="card special">
+  <h2>特殊筹码（特定地图）</h2>
+  <div class="chips">
+    <label class="chip">
+      <input type="checkbox" id="chipPierce" onchange="toggleDefense()"> 贯穿
+    </label>
+  </div>
+
+  <div id="defenseBox" class="hidden" style="margin-top: 12px;">
+    <label>怪物防御力（贯穿用）</label>
+    <div class="num-row" id="defenseRow">
+      <div class="num-btn" onclick="setDefense(5)">5</div>
+      <div class="num-btn" onclick="setDefense(6)">6</div>
+      <div class="num-btn" onclick="setDefense(7)">7</div>
+      <div class="num-btn" onclick="setDefense(8)">8</div>
+      <div class="num-btn" onclick="setDefense(9)">9</div>
+      <div class="num-btn" onclick="setDefense(10)">10</div>
+      <div class="num-btn" onclick="setDefense(11)">11</div>
+      <div class="num-btn" onclick="setDefense(12)">12</div>
+      <div class="num-btn" onclick="setDefense(13)">13</div>
+      <div class="num-btn" onclick="setDefense(14)">14</div>
+      <div class="num-btn" onclick="setDefense(15)">15</div>
+      <div class="num-btn" onclick="setDefense(16)">16</div>
+      <div class="num-btn" onclick="setDefense(17)">17</div>
+      <div class="num-btn" onclick="setDefense(18)">18</div>
+      <div class="num-btn" onclick="setDefense(19)">19</div>
+      <div class="num-btn" onclick="setDefense(20)">20</div>
+    </div>
+    <input type="hidden" id="defense" value="5">
+  </div>
+</div>
+
+<!-- ===== 基础条件 ===== -->
+<div class="card">
+  <h2>基础条件</h2>
+  <div class="row">
+    <div>
+      <label>被动层数</label>
+      <div class="wheel-wrap">
+        <input type="number" id="passive" value="0" min="0" max="20">
+        <div class="tick-bar" id="passiveTick">
+          <div class="ticks"></div>
+          <div class="indicator"></div>
+        </div>
+        <span class="max-hint" id="passiveHint">到顶了喵！</span>
+      </div>
+    </div>
+    <div>
+      <label>怪物标记层数</label>
+      <div class="wheel-wrap">
+        <input type="number" id="mark" value="0" min="0" max="30">
+        <div class="tick-bar" id="markTick">
+          <div class="ticks"></div>
+          <div class="indicator"></div>
+        </div>
+        <span class="max-hint" id="markHint">到顶了喵！</span>
+      </div>
+    </div>
+  </div>
+
+  <label>手牌（书页）数量</label>
+  <div class="num-row" id="handRow">
+    <div class="num-btn" onclick="setHand(1)">1</div>
+    <div class="num-btn" onclick="setHand(2)">2</div>
+    <div class="num-btn" onclick="setHand(3)">3</div>
+    <div class="num-btn" onclick="setHand(4)">4</div>
+    <div class="num-btn" onclick="setHand(5)">5</div>
+    <div class="num-btn" onclick="setHand(6)">6</div>
+    <div class="num-btn" onclick="setHand(7)">7</div>
+    <div class="num-btn" onclick="setHand(8)">8</div>
+    <div class="num-btn" onclick="setHand(9)">9</div>
+  </div>
+  <input type="hidden" id="hand" value="3">
+
+  <label>秘典当前层数</label>
+  <div id="tomeCountBox" class="disabled-block">
+    <div class="num-row" id="tomeCountRow">
+      <div class="num-btn" onclick="setTomeCount(0)">0</div>
+      <div class="num-btn" onclick="setTomeCount(1)">1</div>
+      <div class="num-btn" onclick="setTomeCount(2)">2</div>
+    </div>
+    <input type="hidden" id="tomeCount" value="0">
+  </div>
+</div>
+
+<!-- ===== 怪物免伤 ===== -->
+<div class="card">
+  <h2>怪物免伤</h2>
+  <label class="chip" style="margin-bottom:8px;">
+    <input type="checkbox" id="hasShield"> 有免伤
+  </label>
+  <div id="shieldOptions" class="hidden">
+
+    <label>免伤模式</label>
+    <div class="mode-row">
+      <div class="mode-btn active" data-mode="fixed" onclick="setShieldMode('fixed')">固定每次减 X</div>
+      <div class="mode-btn" data-mode="grow" onclick="setShieldMode('grow')">每受伤递增 X</div>
+    </div>
+
+    <label id="shieldValueLabel">固定免伤数值</label>
+
+    <div class="num-row" id="shieldValueRowFixed">
+      <div class="num-btn" onclick="setFixedShieldValue(1)">1</div>
+      <div class="num-btn" onclick="setFixedShieldValue(2)">2</div>
+      <div class="num-btn" onclick="setFixedShieldValue(3)">3</div>
+      <div class="num-btn" onclick="setFixedShieldValue(4)">4</div>
+      <div class="num-btn" onclick="setFixedShieldValue(5)">5</div>
+      <div class="num-btn" onclick="setFixedShieldValue(6)">6</div>
+      <div class="num-btn" onclick="setFixedShieldValue(7)">7</div>
+      <div class="num-btn" onclick="setFixedShieldValue(8)">8</div>
+      <div class="num-btn" onclick="setFixedShieldValue(9)">9</div>
+    </div>
+
+    <div class="num-row hidden" id="shieldValueRowGrow">
+      <div class="num-btn" onclick="setGrowShieldValue(1)">1</div>
+      <div class="num-btn" onclick="setGrowShieldValue(2)">2</div>
+      <div class="num-btn" onclick="setGrowShieldValue(3)">3</div>
+      <div class="num-btn" onclick="setGrowShieldValue(4)">4</div>
+      <div class="num-btn" onclick="setGrowShieldValue(5)">5</div>
+    </div>
+
+  </div>
+</div>
+
+<button class="calc-btn" onclick="calc()">计算</button>
+
+<div id="result"></div>
+
+<script>
+/* ============================================================
+   刻度条逻辑（带输入上限 + 到顶提示）
+   ============================================================ */
+function initTickBar(tickId, inputId, maxVal, hintId) {
+  const tickBar = document.getElementById(tickId);
+  const input = document.getElementById(inputId);
+  const hint = document.getElementById(hintId);
+  const ticksEl = tickBar.querySelector('.ticks');
+
+  const TOTAL_TICKS = Math.max(maxVal * 2, 50);
+  ticksEl.innerHTML = '';
+  for (let i = 0; i < TOTAL_TICKS; i++) {
+    const t = document.createElement('div');
+    t.className = 'tick' + (i % 5 === 0 ? ' major' : '');
+    ticksEl.appendChild(t);
+  }
+
+  const TICK_HEIGHT = 8;
+  const BAR_HEIGHT = 42;
+
+  function clamp(val) {
+    if (val < 0) return 0;
+    if (val > maxVal) return maxVal;
+    return val;
+  }
+
+  function updateMaxStyle() {
+    const val = +input.value || 0;
+    if (val >= maxVal) {
+      input.classList.add('at-max');
+      hint.classList.add('show');
+    } else {
+      input.classList.remove('at-max');
+      hint.classList.remove('show');
+    }
+  }
+
+  function shake() {
+    input.classList.remove('shake');
+    void input.offsetWidth;
+    input.classList.add('shake');
+  }
+
+  function updateTicks() {
+    let val = +input.value || 0;
+    val = clamp(val);
+    input.value = val;
+
+    const offset = BAR_HEIGHT / 2 + val * TICK_HEIGHT - TICK_HEIGHT / 2;
+    ticksEl.style.transform = `translateY(${offset}px)`;
+
+    updateMaxStyle();
+  }
+
+  input.addEventListener('wheel', function(e) {
+    e.preventDefault();
+    const step = e.deltaY < 0 ? 1 : -1;
+    let val = +input.value || 0;
+
+    if (step === 1 && val >= maxVal) {
+      shake();
+      return;
+    }
+
+    input.value = clamp(val + step);
+    updateTicks();
+  }, { passive: false });
+
+  input.addEventListener('input', function() {
+    let val = +input.value || 0;
+    val = clamp(val);
+    input.value = val;
+    updateTicks();
+  });
+
+  let dragging = false;
+  let startY = 0;
+  let startVal = 0;
+
+  function onDown(e) {
+    dragging = true;
+    startY = (e.touches ? e.touches[0].clientY : e.clientY);
+    startVal = +input.value || 0;
+    e.preventDefault();
+  }
+  function onMove(e) {
+    if (!dragging) return;
+    const y = (e.touches ? e.touches[0].clientY : e.clientY);
+    const dy = y - startY;
+    let val = startVal + Math.round(dy / TICK_HEIGHT);
+    val = clamp(val);
+    input.value = val;
+    updateTicks();
+  }
+  function onUp() { dragging = false; }
+
+  tickBar.addEventListener('mousedown', onDown);
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+  tickBar.addEventListener('touchstart', onDown, { passive: false });
+  window.addEventListener('touchmove', onMove, { passive: false });
+  window.addEventListener('touchend', onUp);
+
+  updateTicks();
+}
+
+initTickBar('passiveTick', 'passive', 20, 'passiveHint');
+initTickBar('markTick', 'mark', 30, 'markHint');
+
+/* ---------- 贯穿 ↔ 防御力联动 ---------- */
+function toggleDefense() {
+  const checked = document.getElementById('chipPierce').checked;
+  document.getElementById('defenseBox').classList.toggle('hidden', !checked);
+}
+
+/* ---------- 秘典 ↔ 秘典层数联动 ---------- */
+function toggleTome() {
+  const checked = document.getElementById('chipTome').checked;
+  document.getElementById('tomeCountBox').classList.toggle('disabled-block', !checked);
+}
+
+/* ---------- 手牌数量 ---------- */
+function setHand(val) {
+  document.getElementById('hand').value = val;
+  document.querySelectorAll('#handRow .num-btn').forEach(btn => {
+    btn.classList.toggle('active', +btn.textContent === val);
+  });
+}
+
+/* ---------- 秘典层数 ---------- */
+function setTomeCount(val) {
+  document.getElementById('tomeCount').value = val;
+  document.querySelectorAll('#tomeCountRow .num-btn').forEach(btn => {
+    btn.classList.toggle('active', +btn.textContent === val);
+  });
+}
+
+/* ---------- 两套独立的免伤数值 ---------- */
+let fixedShieldValue = 1;
+let growShieldValue  = 2;
+let currentShieldMode = 'fixed';
+
+function setFixedShieldValue(val) {
+  fixedShieldValue = val;
+  document.querySelectorAll('#shieldValueRowFixed .num-btn').forEach(btn => {
+    btn.classList.toggle('active', +btn.textContent === val);
+  });
+}
+
+function setGrowShieldValue(val) {
+  growShieldValue = val;
+  document.querySelectorAll('#shieldValueRowGrow .num-btn').forEach(btn => {
+    btn.classList.toggle('active', +btn.textContent === val);
+  });
+}
+
+function setShieldMode(mode) {
+  currentShieldMode = mode;
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+  const label = document.getElementById('shieldValueLabel');
+  label.textContent = mode === 'fixed' ? '固定免伤数值' : '递增数值 X';
+  document.getElementById('shieldValueRowFixed').classList.toggle('hidden', mode !== 'fixed');
+  document.getElementById('shieldValueRowGrow').classList.toggle('hidden', mode !== 'grow');
+
+  if (mode === 'fixed') {
+    document.querySelectorAll('#shieldValueRowFixed .num-btn').forEach(btn => {
+      btn.classList.toggle('active', +btn.textContent === fixedShieldValue);
+    });
+  } else {
+    document.querySelectorAll('#shieldValueRowGrow .num-btn').forEach(btn => {
+      btn.classList.toggle('active', +btn.textContent === growShieldValue);
+    });
+  }
+}
+
+/* ---------- 防御力 ---------- */
+function setDefense(val) {
+  document.getElementById('defense').value = val;
+  document.querySelectorAll('#defenseRow .num-btn').forEach(btn => {
+    btn.classList.toggle('active', +btn.textContent === val);
+  });
+}
+
+/* ---------- 页面首次加载 ---------- */
+setHand(3);
+setTomeCount(0);
+setFixedShieldValue(1);
+setGrowShieldValue(2);
+setDefense(5);
+toggleDefense();
+toggleTome();
+
+/* ---------- 主计算 ---------- */
+function calc() {
+  const passive = +document.getElementById('passive').value || 0;
+  let mark = +document.getElementById('mark').value || 0;
+  const handInit = +document.getElementById('hand').value || 0;
+  let tomeCount = +document.getElementById('tomeCount').value || 0;
+
+  const hasDart = document.getElementById('chipDart').checked;
+  const hasBag = document.getElementById('chipBag').checked;
+  const hasSprinkler = document.getElementById('chipSprinkler').checked;
+  const hasQuiver = document.getElementById('chipQuiver').checked;
+  const hasTome = document.getElementById('chipTome').checked;
+  const hasBookmark = document.getElementById('chipBookmark').checked;
+  const hasPierce = document.getElementById('chipPierce').checked;
+
+  const hasShield = document.getElementById('hasShield').checked;
+  const shieldMode = currentShieldMode;
+  const shieldValue = shieldMode === 'fixed' ? fixedShieldValue : growShieldValue;
+  const defense = +document.getElementById('defense').value || 0;
+
+  let maxPlay = 1;
+  if (hasDart) maxPlay += 1;
+  if (hasBag) maxPlay += 1;
+
+  const HARD_CAP = 9;
+
+  let hand = handInit;
+  let played = 0;
+  let quiverUsed = false;
+  let total = 0;
+  let shieldLayer = 0;
+  const rows = [];
+
+  while (played < maxPlay && played < HARD_CAP && hand > 0) {
+    played++;
+    hand--;
+
+    const markBefore = mark;
+    let quiverTriggered = false;
+
+    if (hasQuiver && !quiverUsed && markBefore >= 1) {
+      mark += 1;
+      quiverTriggered = true;
+      quiverUsed = true;
+      hand++;
+    }
+
+    const markAtDamage = mark;
+
+    const base = 2 + passive + (played - 1);
+    const markBonus = markAtDamage >= 1 ? 1 : 0;
+    const dartBonus = hasDart ? markAtDamage : 0;
+    const pierceBonus = hasPierce ? defense : 0;
+    const bookmarkBonus = hasBookmark ? 1 : 0;
+
+    let shieldReduce = 0;
+    if (hasShield) {
+      if (shieldMode === 'fixed') {
+        shieldReduce = shieldValue;
+      } else {
+        shieldReduce = shieldLayer * shieldValue;
+      }
+    }
+
+    let dmg = base + markBonus + dartBonus + pierceBonus + bookmarkBonus - shieldReduce;
+    if (dmg < 0) dmg = 0;
+
+    total += dmg;
+
+    let markGain = 1;
+    if (hasSprinkler) markGain += 1;
+    mark += markGain;
+
+    if (hasShield && shieldMode === 'grow') {
+      shieldLayer++;
+    }
+
+    let tomeTriggered = false;
+    if (hasTome) {
+      tomeCount++;
+      if (tomeCount >= 3) {
+        tomeCount = 0;
+        hand++;
+        tomeTriggered = true;
+      }
+    }
+
+    if (markAtDamage >= 3) {
+      maxPlay++;
+    }
+
+    rows.push({
+      no: played,
+      markBefore,
+      quiver: quiverTriggered,
+      base,
+      markBonus,
+      dartBonus,
+      pierceBonus,
+      bookmarkBonus,
+      shieldReduce,
+      dmg,
+      markAfter: mark,
+      tome: tomeTriggered
+    });
+  }
+
+  // ===== 保存统计（预览前） =====
+  const statTotal = total;
+  const statPlayed = played;
+  const statHand = hand;
+
+  // ===== 预览：最多再算 2 张 =====
+  const previewRows = [];
+  let previewCount = 0;
+
+  while (previewCount < 2 && played < HARD_CAP) {
+    played++;
+    hand--;
+    previewCount++;
+
+    const markBefore = mark;
+    let quiverTriggered = false;
+
+    if (hasQuiver && !quiverUsed && markBefore >= 1) {
+      mark += 1;
+      quiverTriggered = true;
+      quiverUsed = true;
+      hand++;
+    }
+
+    const markAtDamage = mark;
+
+    const base = 2 + passive + (played - 1);
+    const markBonus = markAtDamage >= 1 ? 1 : 0;
+    const dartBonus = hasDart ? markAtDamage : 0;
+    const pierceBonus = hasPierce ? defense : 0;
+    const bookmarkBonus = hasBookmark ? 1 : 0;
+
+    let shieldReduce = 0;
+    if (hasShield) {
+      if (shieldMode === 'fixed') {
+        shieldReduce = shieldValue;
+      } else {
+        shieldReduce = shieldLayer * shieldValue;
+      }
+    }
+
+    let dmg = base + markBonus + dartBonus + pierceBonus + bookmarkBonus - shieldReduce;
+    if (dmg < 0) dmg = 0;
+
+    let markGain = 1;
+    if (hasSprinkler) markGain += 1;
+    mark += markGain;
+
+    if (hasShield && shieldMode === 'grow') {
+      shieldLayer++;
+    }
+
+    let tomeTriggered = false;
+    if (hasTome) {
+      tomeCount++;
+      if (tomeCount >= 3) {
+        tomeCount = 0;
+        hand++;
+        tomeTriggered = true;
+      }
+    }
+
+    if (markAtDamage >= 3) {
+      maxPlay++;
+    }
+
+    previewRows.push({
+      no: played,
+      markBefore,
+      quiver: quiverTriggered,
+      base,
+      markBonus,
+      dartBonus,
+      pierceBonus,
+      bookmarkBonus,
+      shieldReduce,
+      dmg,
+      markAfter: mark,
+      tome: tomeTriggered
+    });
+  }
+
+  // ===== 渲染 =====
+  let html = '<div class="card"><h2>伤害明细</h2><table><thead><tr>';
+  html += '<th>#</th><th>打前标</th><th>箭袋</th><th>基础</th><th>标增</th><th>飞镖</th><th>贯穿</th><th>书签</th><th>免伤</th><th>伤害</th><th>打后标</th><th>秘典</th>';
+  html += '</tr></thead><tbody>';
+
+  rows.forEach(r => {
+    html += '<tr>';
+    html += `<td>${r.no}</td>`;
+    html += `<td>${r.markBefore}</td>`;
+    html += `<td>${r.quiver ? '✓' : ''}</td>`;
+    html += `<td>${r.base}</td>`;
+    html += `<td>${r.markBonus ? '+1' : ''}</td>`;
+    html += `<td>${r.dartBonus || ''}</td>`;
+    html += `<td>${r.pierceBonus || ''}</td>`;
+    html += `<td>${r.bookmarkBonus ? '+1' : ''}</td>`;
+    html += `<td>${r.shieldReduce ? '-' + r.shieldReduce : ''}</td>`;
+    html += `<td><b>${r.dmg}</b></td>`;
+    html += `<td>${r.markAfter}</td>`;
+    html += `<td>${r.tome ? '复制' : ''}</td>`;
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  html += `<div class="total">总伤害：${statTotal}</div>`;
+  html += `<div class="note">共出 ${statPlayed} 张牌，剩余手牌 ${statHand} 张</div>`;
+
+  // 预览表
+  if (previewRows.length > 0) {
+    html += '<div class="preview-title">继续往后预览（不计入上方统计）</div>';
+    html += '<table class="preview-table"><thead><tr>';
+    html += '<th>#</th><th>打前标</th><th>箭袋</th><th>基础</th><th>标增</th><th>飞镖</th><th>贯穿</th><th>书签</th><th>免伤</th><th>伤害</th><th>打后标</th><th>秘典</th>';
+    html += '</tr></thead><tbody>';
+    previewRows.forEach(r => {
+      html += '<tr>';
+      html += `<td>${r.no}</td>`;
+      html += `<td>${r.markBefore}</td>`;
+      html += `<td>${r.quiver ? '✓' : ''}</td>`;
+      html += `<td>${r.base}</td>`;
+      html += `<td>${r.markBonus ? '+1' : ''}</td>`;
+      html += `<td>${r.dartBonus || ''}</td>`;
+      html += `<td>${r.pierceBonus || ''}</td>`;
+      html += `<td>${r.bookmarkBonus ? '+1' : ''}</td>`;
+      html += `<td>${r.shieldReduce ? '-' + r.shieldReduce : ''}</td>`;
+      html += `<td><b>${r.dmg}</b></td>`;
+      html += `<td>${r.markAfter}</td>`;
+      html += `<td>${r.tome ? '复制' : ''}</td>`;
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+  }
+
+  html += '</div>';
+
+  document.getElementById('result').innerHTML = html;
+}
+
+/* ---------- 免伤开关 ---------- */
+document.getElementById('hasShield').addEventListener('change', function() {
+  document.getElementById('shieldOptions').classList.toggle('hidden', !this.checked);
+});
+
+/* ---------- 筹码选中样式 ---------- */
+document.querySelectorAll('.chip input[type="checkbox"]').forEach(cb => {
+  cb.addEventListener('change', function() {
+    this.closest('.chip').classList.toggle('active', this.checked);
+  });
+});
+</script>
+
+</body>
+</html>
