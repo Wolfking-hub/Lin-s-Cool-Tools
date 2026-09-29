@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>凛的妙妙工具</title>
+<title>卡牌伤害计算器</title>
 <style>
   * { box-sizing: border-box; }
   body {
@@ -245,7 +245,7 @@
 </head>
 <body>
 
-<h1>书页伤害计算</h1>
+<h1>卡牌伤害计算器</h1>
 
 <!-- ===== 筹码区 ===== -->
 <div class="card">
@@ -270,25 +270,14 @@
 
   <div id="defenseBox" class="hidden" style="margin-top: 12px;">
     <label>怪物防御力（贯穿用）</label>
-    <div class="num-row" id="defenseRow">
-      <div class="num-btn" onclick="setDefense(5)">5</div>
-      <div class="num-btn" onclick="setDefense(6)">6</div>
-      <div class="num-btn" onclick="setDefense(7)">7</div>
-      <div class="num-btn" onclick="setDefense(8)">8</div>
-      <div class="num-btn" onclick="setDefense(9)">9</div>
-      <div class="num-btn" onclick="setDefense(10)">10</div>
-      <div class="num-btn" onclick="setDefense(11)">11</div>
-      <div class="num-btn" onclick="setDefense(12)">12</div>
-      <div class="num-btn" onclick="setDefense(13)">13</div>
-      <div class="num-btn" onclick="setDefense(14)">14</div>
-      <div class="num-btn" onclick="setDefense(15)">15</div>
-      <div class="num-btn" onclick="setDefense(16)">16</div>
-      <div class="num-btn" onclick="setDefense(17)">17</div>
-      <div class="num-btn" onclick="setDefense(18)">18</div>
-      <div class="num-btn" onclick="setDefense(19)">19</div>
-      <div class="num-btn" onclick="setDefense(20)">20</div>
+    <div class="wheel-wrap">
+      <input type="number" id="defense" value="5" min="1" max="25">
+      <div class="tick-bar" id="defenseTick">
+        <div class="ticks"></div>
+        <div class="indicator"></div>
+      </div>
+      <span class="max-hint" id="defenseHint">到顶了喵！</span>
     </div>
-    <input type="hidden" id="defense" value="5">
   </div>
 </div>
 
@@ -392,13 +381,15 @@
 /* ============================================================
    刻度条逻辑（带输入上限 + 到顶提示）
    ============================================================ */
-function initTickBar(tickId, inputId, maxVal, hintId) {
+function initTickBar(tickId, inputId, maxVal, hintId, minVal) {
   const tickBar = document.getElementById(tickId);
   const input = document.getElementById(inputId);
   const hint = document.getElementById(hintId);
   const ticksEl = tickBar.querySelector('.ticks');
 
-  const TOTAL_TICKS = Math.max(maxVal * 2, 50);
+  const MIN_VAL = (minVal !== undefined) ? minVal : 0;
+
+  const TOTAL_TICKS = Math.max((maxVal - MIN_VAL) * 2 + 10, 50);
   ticksEl.innerHTML = '';
   for (let i = 0; i < TOTAL_TICKS; i++) {
     const t = document.createElement('div');
@@ -410,7 +401,7 @@ function initTickBar(tickId, inputId, maxVal, hintId) {
   const BAR_HEIGHT = 42;
 
   function clamp(val) {
-    if (val < 0) return 0;
+    if (val < MIN_VAL) return MIN_VAL;
     if (val > maxVal) return maxVal;
     return val;
   }
@@ -437,7 +428,8 @@ function initTickBar(tickId, inputId, maxVal, hintId) {
     val = clamp(val);
     input.value = val;
 
-    const offset = BAR_HEIGHT / 2 + val * TICK_HEIGHT - TICK_HEIGHT / 2;
+    const relative = val - MIN_VAL;
+    const offset = BAR_HEIGHT / 2 + relative * TICK_HEIGHT - TICK_HEIGHT / 2;
     ticksEl.style.transform = `translateY(${offset}px)`;
 
     updateMaxStyle();
@@ -497,6 +489,7 @@ function initTickBar(tickId, inputId, maxVal, hintId) {
 
 initTickBar('passiveTick', 'passive', 20, 'passiveHint');
 initTickBar('markTick', 'mark', 30, 'markHint');
+initTickBar('defenseTick', 'defense', 25, 'defenseHint', 1);
 
 /* ---------- 贯穿 ↔ 防御力联动 ---------- */
 function toggleDefense() {
@@ -566,20 +559,11 @@ function setShieldMode(mode) {
   }
 }
 
-/* ---------- 防御力 ---------- */
-function setDefense(val) {
-  document.getElementById('defense').value = val;
-  document.querySelectorAll('#defenseRow .num-btn').forEach(btn => {
-    btn.classList.toggle('active', +btn.textContent === val);
-  });
-}
-
 /* ---------- 页面首次加载 ---------- */
 setHand(3);
 setTomeCount(0);
 setFixedShieldValue(1);
 setGrowShieldValue(2);
-setDefense(5);
 toggleDefense();
 toggleTome();
 
@@ -690,7 +674,6 @@ function calc() {
     });
   }
 
-  // ===== 保存统计（预览前） =====
   const statTotal = total;
   const statPlayed = played;
   const statHand = hand;
@@ -772,7 +755,6 @@ function calc() {
     });
   }
 
-  // ===== 渲染 =====
   let html = '<div class="card"><h2>伤害明细</h2><table><thead><tr>';
   html += '<th>#</th><th>打前标</th><th>箭袋</th><th>基础</th><th>标增</th><th>飞镖</th><th>贯穿</th><th>书签</th><th>免伤</th><th>伤害</th><th>打后标</th><th>秘典</th>';
   html += '</tr></thead><tbody>';
@@ -798,7 +780,6 @@ function calc() {
   html += `<div class="total">总伤害：${statTotal}</div>`;
   html += `<div class="note">共出 ${statPlayed} 张牌，剩余手牌 ${statHand} 张</div>`;
 
-  // 预览表
   if (previewRows.length > 0) {
     html += '<div class="preview-title">继续往后预览（不计入上方统计）</div>';
     html += '<table class="preview-table"><thead><tr>';
