@@ -238,7 +238,6 @@
     color: #999;
   }
 
-  /* 怪物状态 */
   .monster-row {
     display: flex;
     gap: 8px;
@@ -270,7 +269,6 @@
     opacity: 0.4;
   }
 
-  /* ===== 展开容器：平滑展开 ===== */
   .expand-box {
     overflow: hidden;
     max-height: 0;
@@ -291,7 +289,6 @@
 
 <h1>书页伤害计算</h1>
 
-<!-- ===== 筹码区 ===== -->
 <div class="card">
   <h2>普通筹码</h2>
   <div class="chips" id="chipBox">
@@ -325,7 +322,6 @@
   </div>
 </div>
 
-<!-- ===== 基础条件 ===== -->
 <div class="card">
   <h2>基础条件</h2>
   <div class="row">
@@ -378,7 +374,6 @@
   </div>
 </div>
 
-<!-- ===== 怪物状态 ===== -->
 <div class="card">
   <h2>怪物状态</h2>
 
@@ -439,9 +434,6 @@
 <div id="result"></div>
 
 <script>
-/* ============================================================
-   刻度条逻辑
-   ============================================================ */
 function initTickBar(tickId, inputId, maxVal, hintId, minVal) {
   const tickBar = document.getElementById(tickId);
   const input = document.getElementById(inputId);
@@ -552,19 +544,16 @@ initTickBar('passiveTick', 'passive', 20, 'passiveHint');
 initTickBar('markTick', 'mark', 30, 'markHint');
 initTickBar('defenseTick', 'defense', 25, 'defenseHint', 1);
 
-/* ---------- 贯穿 ↔ 防御力联动 ---------- */
 function toggleDefense() {
   const checked = document.getElementById('chipPierce').checked;
   document.getElementById('defenseBox').classList.toggle('open', checked);
 }
 
-/* ---------- 秘典 ↔ 秘典层数联动 ---------- */
 function toggleTome() {
   const checked = document.getElementById('chipTome').checked;
   document.getElementById('tomeCountBox').classList.toggle('disabled-block', !checked);
 }
 
-/* ---------- 怪物状态：互斥 + 平分按钮 ---------- */
 function onMonsterStateChange(which) {
   const shield = document.getElementById('hasShield');
   const vuln = document.getElementById('hasVulnerable');
@@ -588,7 +577,6 @@ function onMonsterStateChange(which) {
   document.getElementById('vulnerableOptions').classList.toggle('open', vuln.checked);
 }
 
-/* ---------- 手牌数量 ---------- */
 function setHand(val) {
   document.getElementById('hand').value = val;
   document.querySelectorAll('#handRow .num-btn').forEach(btn => {
@@ -596,7 +584,6 @@ function setHand(val) {
   });
 }
 
-/* ---------- 秘典层数 ---------- */
 function setTomeCount(val) {
   document.getElementById('tomeCount').value = val;
   document.querySelectorAll('#tomeCountRow .num-btn').forEach(btn => {
@@ -604,7 +591,6 @@ function setTomeCount(val) {
   });
 }
 
-/* ---------- 初始易伤层数（1-5 方块） ---------- */
 function setVulnerableInit(val) {
   document.getElementById('vulnerableInit').value = val;
   document.querySelectorAll('#vulnerableRow .num-btn').forEach(btn => {
@@ -612,7 +598,6 @@ function setVulnerableInit(val) {
   });
 }
 
-/* ---------- 两套独立的免伤数值 ---------- */
 let fixedShieldValue = 1;
 let growShieldValue  = 2;
 let currentShieldMode = 'fixed';
@@ -652,7 +637,6 @@ function setShieldMode(mode) {
   }
 }
 
-/* ---------- 页面首次加载 ---------- */
 setHand(3);
 setTomeCount(0);
 setFixedShieldValue(1);
@@ -662,7 +646,6 @@ toggleDefense();
 toggleTome();
 onMonsterStateChange('none');
 
-/* ---------- 主计算 ---------- */
 function calc() {
   const passive = +document.getElementById('passive').value || 0;
   let mark = +document.getElementById('mark').value || 0;
@@ -683,7 +666,9 @@ function calc() {
   const shieldValue = shieldMode === 'fixed' ? fixedShieldValue : growShieldValue;
   const defense = +document.getElementById('defense').value || 0;
 
-  let vulnerable = hasVulnerable ? (+document.getElementById('vulnerableInit').value || 0) : 0;
+  // ===== 易伤：对称于递增免伤 =====
+  const vulnerableInit = hasVulnerable ? (+document.getElementById('vulnerableInit').value || 0) : 0;
+  let vulnerableLayer = 0;  // 第1张为0，打完后 += vulnerableInit
 
   let maxPlay = 1;
   if (hasDart) maxPlay += 1;
@@ -719,7 +704,7 @@ function calc() {
     const dartBonus = hasDart ? markAtDamage : 0;
     const pierceBonus = hasPierce ? defense : 0;
     const bookmarkBonus = hasBookmark ? 1 : 0;
-    const vulnerableBonus = hasVulnerable ? vulnerable : 0;
+    const vulnerableBonus = hasVulnerable ? vulnerableLayer : 0;
 
     let shieldReduce = 0;
     if (hasShield) {
@@ -744,7 +729,7 @@ function calc() {
     }
 
     if (hasVulnerable) {
-      vulnerable++;
+      vulnerableLayer += vulnerableInit;
     }
 
     let tomeTriggered = false;
@@ -807,7 +792,7 @@ function calc() {
     const dartBonus = hasDart ? markAtDamage : 0;
     const pierceBonus = hasPierce ? defense : 0;
     const bookmarkBonus = hasBookmark ? 1 : 0;
-    const vulnerableBonus = hasVulnerable ? vulnerable : 0;
+    const vulnerableBonus = hasVulnerable ? vulnerableLayer : 0;
 
     let shieldReduce = 0;
     if (hasShield) {
@@ -830,7 +815,7 @@ function calc() {
     }
 
     if (hasVulnerable) {
-      vulnerable++;
+      vulnerableLayer += vulnerableInit;
     }
 
     let tomeTriggered = false;
@@ -920,7 +905,6 @@ function calc() {
   document.getElementById('result').innerHTML = html;
 }
 
-/* ---------- 筹码选中样式 ---------- */
 document.querySelectorAll('.chip input[type="checkbox"]').forEach(cb => {
   cb.addEventListener('change', function() {
     this.closest('.chip').classList.toggle('active', this.checked);
